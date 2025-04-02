@@ -203,64 +203,33 @@ class PersonalityTrader:
         else:
             return "neutral"
 
-def generate_personality_trader_output( # Removed analysis_data parameter
+def generate_personality_trader_output( # Removed analysis_data, personality, enneagram parameters
     ticker: str,
     # analysis_data: dict, # Removed
     model_name: str,
     model_provider: str,
-    personality: str,
-    enneagram: str,
+    # personality: str, # Removed
+    # enneagram: str,   # Removed
 ) -> PersonalityTraderSignal:
     """
     Generates a trading signal based on the PersonalityTrader agent's analysis,
-    incorporating the unique MBTI and Enneagram traits.
+    using the configuration loaded from agent_config.json.
     """
-    # Override configuration with provided personality and enneagram values.
-    config = {
-        "personality": personality,
-        "enneagram": enneagram,
-        "base_threshold": 0.05,
-        "risk_appetite": 1.0,
-        "personality_adjustments": {
-            "INTJ": 0.85,
-            "ENTJ": 0.80,
-            "INFJ": 1.10,
-            "ENFJ": 1.00,
-            "ISTJ": 1.15,
-            "ESTJ": 1.05,
-            "ISFJ": 1.20,
-            "ESFJ": 1.10,
-            "ISTP": 0.95,
-            "ESTP": 0.75,
-            "INFP": 1.15,
-            "ENFP": 0.90,
-            "INTP": 0.95,
-            "ENTP": 0.80
-        },
-        "enneagram_adjustments": {
-            "1": 1.10,
-            "2": 1.00,
-            "3": 0.90,
-            "4": 1.00,
-            "5": 0.85,
-            "6": 1.15,
-            "7": 0.75,
-            "8": 0.85,
-            "9": 1.10
-        }
-    }
-    
-    agent = PersonalityTrader()
-    agent.config = config
-    agent.personality = personality
-    agent.enneagram = enneagram
-    agent.base_threshold = config.get("base_threshold", 0.05)
-    agent.risk_appetite = config.get("risk_appetite", 1.0)
-    agent.personality_adjustment = config["personality_adjustments"].get(personality, 1.0)
-    agent.enneagram_adjustment = config["enneagram_adjustments"].get(enneagram, 1.0)
+    # Instantiate the agent - this will load agent_config.json by default
+    # Ensure the config file is in the expected location relative to execution,
+    # or pass an explicit path if needed.
+    # Assuming execution from project root, the default 'agent_config.json'
+    # might need to be 'src/agents/agent_config.json'. Let's adjust the default path.
+    config_file_path = os.path.join('src', 'agents', 'agent_config.json')
+    if not os.path.exists(config_file_path):
+        # Fallback if not found in src/agents (e.g., running from src/agents dir)
+        config_file_path = 'agent_config.json'
+
+    agent = PersonalityTrader(config_path=config_file_path)
 
     # --- Construct simplified prompt string ---
-    system_instructions = agent.generate_prompt() # Get static instructions
+    # The agent instance now holds the config loaded from the file
+    system_instructions = agent.generate_prompt()
 
     # Simple human request focusing on the ticker and desired output format
     human_request_string = (
@@ -362,15 +331,15 @@ def personality_trader_agent(state: AgentState):
         analysis_data_all[ticker] = analysis_data
         
         # Generate a personality-driven trading signal.
-        trader_signal = generate_personality_trader_output( # Removed analysis_data argument
+        # Remove personality/enneagram args as they are now loaded from config by the agent instance
+        trader_signal = generate_personality_trader_output(
             ticker=ticker,
-            # analysis_data=analysis_data, # Removed
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
-            personality=state["metadata"].get("personality", "INTJ"),
-            enneagram=state["metadata"].get("enneagram", "5")
+            # personality=state["metadata"].get("personality", "INTJ"), # Removed
+            # enneagram=state["metadata"].get("enneagram", "5")        # Removed
         )
-        
+
         trader_analysis[ticker] = {
             "signal": trader_signal.signal,
             "confidence": trader_signal.confidence,
