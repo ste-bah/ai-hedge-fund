@@ -309,12 +309,8 @@ if __name__ == "__main__":
         latest_prices=latest_prices, # Pass fetched prices
         show_reasoning=args.show_reasoning,
         selected_analysts=selected_analysts,
-        model_name=model_choice,
-        end_date=end_date,
-        portfolio=portfolio,
-        show_reasoning=args.show_reasoning,
-        selected_analysts=selected_analysts,
-        model_name=model_choice,
+        model_name=model_choice, # Keep this one
         model_provider=model_provider,
+        # Remove all duplicates below this line from the previous attempt
     )
     print_trading_output(result)
