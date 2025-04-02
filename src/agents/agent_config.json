@@ -1,0 +1,33 @@
+{
+  "personality": "INTJ",
+  "enneagram": "4",
+  "base_threshold": 0.05,
+  "risk_appetite": 1.0,
+  "personality_adjustments": {
+    "INTJ": 0.85,
+    "ENTJ": 0.80,
+    "INFJ": 1.10,
+    "ENFJ": 1.00,
+    "ISTJ": 1.15,
+    "ESTJ": 1.05,
+    "ISFJ": 1.20,
+    "ESFJ": 1.10,
+    "ISTP": 0.95,
+    "ESTP": 0.75,
+    "INFP": 1.15,
+    "ENFP": 0.90,
+    "INTP": 0.95,
+    "ENTP": 0.80
+  },
+  "enneagram_adjustments": {
+    "1": 1.10,
+    "2": 1.00,
+    "3": 0.90,
+    "4": 1.00,
+    "5": 0.85,
+    "6": 1.15,
+    "7": 0.75,
+    "8": 0.85,
+    "9": 1.10
+  }
+}
