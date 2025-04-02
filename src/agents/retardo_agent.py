@@ -163,7 +163,7 @@ class PersonalityTrader:
         self.personality_adjustment = self.personality_adjustments.get(self.personality, 1.0)
         self.enneagram_adjustment = self.enneagram_adjustments.get(self.enneagram, 1.0)
 
-    def generate_prompt(self) -> str:
+    def generate_prompt(self, start_date: str, end_date: str, current_price: float) -> str: # Added parameters
         """Generates the static instruction part of the system prompt."""
         personality_desc = self.personality_traits.get(self.personality, "")
         enneagram_desc = self.enneagram_traits.get(self.enneagram, "")
