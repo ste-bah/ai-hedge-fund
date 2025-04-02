@@ -137,11 +137,15 @@ def peter_lynch_agent(state: AgentState):
         }
 
         progress.update_status("peter_lynch_agent", ticker, "Generating Peter Lynch analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         lynch_output = generate_lynch_output(
             ticker=ticker,
             analysis_data=analysis_data[ticker],
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
 
         lynch_analysis[ticker] = {
@@ -437,11 +441,14 @@ def analyze_insider_activity(insider_trades: list) -> dict:
     return {"score": score, "details": "; ".join(details)}
 
 
-def generate_lynch_output(
+def generate_lynch_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> PeterLynchSignal:
     """
     Generates a final JSON signal in Peter Lynch's voice & style.
@@ -465,8 +472,9 @@ def generate_lynch_output(
                 - Refer to personal or anecdotal observations (e.g., "If my kids love the product...")
                 - Use practical, folksy language
                 - Provide key positives and negatives
+                - **Mention the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
                 - Conclude with a clear stance (bullish, bearish, or neutral)
-                
+
                 Return your final output strictly in JSON with the fields:
                 {{
                   "signal": "bullish" | "bearish" | "neutral",
@@ -488,7 +496,13 @@ def generate_lynch_output(
         ]
     )
 
-    prompt = template.invoke({"analysis_data": json.dumps(analysis_data, indent=2), "ticker": ticker})
+    prompt = template.invoke({
+        "analysis_data": json.dumps(analysis_data, indent=2),
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
+    })
 
     def create_default_signal():
         return PeterLynchSignal(

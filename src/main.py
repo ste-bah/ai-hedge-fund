@@ -21,6 +21,7 @@ from utils.display import print_trading_output
 from utils.analysts import ANALYST_ORDER, get_analyst_nodes
 from utils.progress import progress
 from llm.models import LLM_ORDER, get_model_info
+from tools.api import get_prices # Import get_prices
 
 import argparse
 from datetime import datetime
@@ -57,6 +58,7 @@ def run_hedge_fund(
     start_date: str,
     end_date: str,
     portfolio: dict,
+    latest_prices: dict[str, float], # Add latest_prices parameter
     show_reasoning: bool = False,
     selected_analysts: list[str] = [],
     model_name: str = "gpt-4o",
@@ -85,6 +87,7 @@ def run_hedge_fund(
                     "portfolio": portfolio,
                     "start_date": start_date,
                     "end_date": end_date,
+                    "latest_prices": latest_prices, # Pass latest_prices to initial state
                     "analyst_signals": {},
                 },
                 "metadata": {
@@ -278,10 +281,35 @@ if __name__ == "__main__":
         }
     }
 
+    # Fetch latest prices before running
+    latest_prices = {}
+    print("\nFetching latest prices...")
+    for ticker in tickers:
+        try:
+            # Fetch price just for the end_date
+            prices = get_prices(ticker, end_date, end_date)
+            if prices:
+                latest_prices[ticker] = prices[0].close # Assuming the first (and only) price is the latest
+                print(f"  {ticker}: ${latest_prices[ticker]:.2f}")
+            else:
+                latest_prices[ticker] = 0.0 # Or handle error/default appropriately
+                print(f"  {ticker}: Price not found for {end_date}")
+        except Exception as e:
+            print(f"  Error fetching price for {ticker}: {e}")
+            latest_prices[ticker] = 0.0 # Default on error
+    print("Done fetching latest prices.\n")
+
+
     # Run the hedge fund
     result = run_hedge_fund(
         tickers=tickers,
         start_date=start_date,
+        end_date=end_date,
+        portfolio=portfolio,
+        latest_prices=latest_prices, # Pass fetched prices
+        show_reasoning=args.show_reasoning,
+        selected_analysts=selected_analysts,
+        model_name=model_choice,
         end_date=end_date,
         portfolio=portfolio,
         show_reasoning=args.show_reasoning,

@@ -134,11 +134,15 @@ def stanley_druckenmiller_agent(state: AgentState):
         }
 
         progress.update_status("stanley_druckenmiller_agent", ticker, "Generating Stanley Druckenmiller analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         druck_output = generate_druckenmiller_output(
             ticker=ticker,
-            analysis_data=analysis_data,
+            analysis_data=analysis_data[ticker], # Pass specific ticker's analysis
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
 
         druck_analysis[ticker] = {
@@ -518,11 +522,14 @@ def analyze_druckenmiller_valuation(financial_line_items: list, market_cap: floa
     return {"score": final_score, "details": "; ".join(details)}
 
 
-def generate_druckenmiller_output(
+def generate_druckenmiller_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> StanleyDruckenmillerSignal:
     """
     Generates a JSON signal in the style of Stanley Druckenmiller.
@@ -552,10 +559,11 @@ def generate_druckenmiller_output(
               3. Discussing market sentiment and catalysts that could drive price action
               4. Addressing both upside potential and downside risks
               5. Providing specific valuation context relative to growth prospects
-              6. Using Stanley Druckenmiller's decisive, momentum-focused, and conviction-driven voice
-              
-              For example, if bullish: "The company shows exceptional momentum with revenue accelerating from 22% to 35% YoY and the stock up 28% over the past three months. Risk-reward is highly asymmetric with 70% upside potential based on FCF multiple expansion and only 15% downside risk given the strong balance sheet with 3x cash-to-debt. Insider buying and positive market sentiment provide additional tailwinds..."
-              For example, if bearish: "Despite recent stock momentum, revenue growth has decelerated from 30% to 12% YoY, and operating margins are contracting. The risk-reward proposition is unfavorable with limited 10% upside potential against 40% downside risk. The competitive landscape is intensifying, and insider selling suggests waning confidence. I'm seeing better opportunities elsewhere with more favorable setups..."
+              6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
+              7. Using Stanley Druckenmiller's decisive, momentum-focused, and conviction-driven voice
+
+              For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, the company shows exceptional momentum..."
+              For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, despite recent stock momentum, revenue growth has decelerated..."
               """,
             ),
             (
@@ -576,7 +584,13 @@ def generate_druckenmiller_output(
         ]
     )
 
-    prompt = template.invoke({"analysis_data": json.dumps(analysis_data, indent=2), "ticker": ticker})
+    prompt = template.invoke({
+        "analysis_data": json.dumps(analysis_data, indent=2),
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
+    })
 
     def create_default_signal():
         return StanleyDruckenmillerSignal(

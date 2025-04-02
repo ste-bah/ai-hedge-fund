@@ -105,11 +105,15 @@ def warren_buffett_agent(state: AgentState):
         }
 
         progress.update_status("warren_buffett_agent", ticker, "Generating Warren Buffett analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         buffett_output = generate_buffett_output(
             ticker=ticker,
-            analysis_data=analysis_data,
+            analysis_data=analysis_data[ticker], # Pass the specific ticker's analysis
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
 
         # Store analysis in consistent format with other agents
@@ -382,11 +386,14 @@ def calculate_intrinsic_value(financial_line_items: list) -> dict[str, any]:
     }
 
 
-def generate_buffett_output(
+def generate_buffett_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> WarrenBuffettSignal:
     """Get investment decision from LLM with Buffett's principles"""
     template = ChatPromptTemplate.from_messages(
@@ -406,11 +413,12 @@ def generate_buffett_output(
                 1. Explaining the key factors that influenced your decision the most (both positive and negative)
                 2. Highlighting how the company aligns with or violates specific Buffett principles
                 3. Providing quantitative evidence where relevant (e.g., specific margins, ROE values, debt levels)
-                4. Concluding with a Buffett-style assessment of the investment opportunity
-                5. Using Warren Buffett's voice and conversational style in your explanation
+                4. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
+                5. Concluding with a Buffett-style assessment of the investment opportunity
+                6. Using Warren Buffett's voice and conversational style in your explanation
 
-                For example, if bullish: "I'm particularly impressed with [specific strength], reminiscent of our early investment in See's Candies where we saw [similar attribute]..."
-                For example, if bearish: "The declining returns on capital remind me of the textile operations at Berkshire that we eventually exited because..."
+                For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, I'm particularly impressed with [specific strength]..."
+                For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, the declining returns on capital remind me..."
 
                 Follow these guidelines strictly.
                 """,
@@ -433,7 +441,13 @@ def generate_buffett_output(
         ]
     )
 
-    prompt = template.invoke({"analysis_data": json.dumps(analysis_data, indent=2), "ticker": ticker})
+    prompt = template.invoke({
+        "analysis_data": json.dumps(analysis_data, indent=2),
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
+    })
 
     # Default fallback signal in case parsing fails
     def create_default_warren_buffett_signal():

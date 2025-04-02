@@ -91,11 +91,15 @@ def cathie_wood_agent(state: AgentState):
         }
 
         progress.update_status("cathie_wood_agent", ticker, "Generating Cathie Wood analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         cw_output = generate_cathie_wood_output(
             ticker=ticker,
-            analysis_data=analysis_data,
+            analysis_data=analysis_data[ticker], # Pass specific ticker's analysis
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
 
         cw_analysis[ticker] = {
@@ -419,11 +423,14 @@ def analyze_cathie_wood_valuation(financial_line_items: list, market_cap: float)
     }
 
 
-def generate_cathie_wood_output(
+def generate_cathie_wood_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> CathieWoodSignal:
     """
     Generates investment decisions in the style of Cathie Wood.
@@ -446,17 +453,18 @@ def generate_cathie_wood_output(
             - Check if the company can scale effectively in a large market.
             - Use a growth-biased valuation approach.
             - Provide a data-driven recommendation (bullish, bearish, or neutral).
-            
+
             When providing your reasoning, be thorough and specific by:
             1. Identifying the specific disruptive technologies/innovations the company is leveraging
             2. Highlighting growth metrics that indicate exponential potential (revenue acceleration, expanding TAM)
             3. Discussing the long-term vision and transformative potential over 5+ year horizons
             4. Explaining how the company might disrupt traditional industries or create new markets
             5. Addressing R&D investment and innovation pipeline that could drive future growth
-            6. Using Cathie Wood's optimistic, future-focused, and conviction-driven voice
-            
-            For example, if bullish: "The company's AI-driven platform is transforming the $500B healthcare analytics market, with evidence of platform adoption accelerating from 40% to 65% YoY. Their R&D investments of 22% of revenue are creating a technological moat that positions them to capture a significant share of this expanding market. The current valuation doesn't reflect the exponential growth trajectory we expect as..."
-            For example, if bearish: "While operating in the genomics space, the company lacks truly disruptive technology and is merely incrementally improving existing techniques. R&D spending at only 8% of revenue signals insufficient investment in breakthrough innovation. With revenue growth slowing from 45% to 20% YoY, there's limited evidence of the exponential adoption curve we look for in transformative companies..."
+            6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
+            7. Using Cathie Wood's optimistic, future-focused, and conviction-driven voice
+
+            For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, the company's AI-driven platform is transforming the $500B healthcare analytics market..."
+            For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, while operating in the genomics space, the company lacks truly disruptive technology..."
             """
         ),
         (
@@ -478,7 +486,10 @@ def generate_cathie_wood_output(
 
     prompt = template.invoke({
         "analysis_data": json.dumps(analysis_data, indent=2),
-        "ticker": ticker
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
     })
 
     def create_default_cathie_wood_signal():

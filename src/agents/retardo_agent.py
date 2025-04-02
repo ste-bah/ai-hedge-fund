@@ -180,10 +180,10 @@ class PersonalityTrader:
             "1. A clear decision: bullish, bearish, or neutral.\n"
             "2. A confidence level (0-100) reflecting your personality-driven risk appetite.\n"
             "3. Detailed reasoning that incorporates at least 2-3 aspects of your personality and enneagram traits, "
-            "including any typical drawbacks you normally mitigate.\n"
+            "including any typical drawbacks you normally mitigate. **Crucially, mention the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) in your reasoning.**\n" # Added instruction
             "4. Relevant quantitative evidence (e.g., price deviations, trend analysis).\n\n"
-            "Return your response strictly as a JSON object with the following keys: 'signal' (string: 'bullish', 'bearish', or 'neutral'), 'confidence' (float: 0-100), and 'reasoning' (string)." # Describe format, don't show example
-        )
+            "Return your response strictly as a JSON object with the following keys: 'signal' (string: 'bullish', 'bearish', or 'neutral'), 'confidence' (float: 0-100), and 'reasoning' (string)."
+        ).format(start_date=start_date, end_date=end_date, current_price=current_price) # Format the string
         return instructions
 
     def decide(self, market_data: dict) -> str:
@@ -203,13 +203,13 @@ class PersonalityTrader:
         else:
             return "neutral"
 
-def generate_personality_trader_output( # Removed analysis_data, personality, enneagram parameters
+def generate_personality_trader_output( # Added dates and price parameters
     ticker: str,
-    # analysis_data: dict, # Removed
     model_name: str,
     model_provider: str,
-    # personality: str, # Removed
-    # enneagram: str,   # Removed
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> PersonalityTraderSignal:
     """
     Generates a trading signal based on the PersonalityTrader agent's analysis,
@@ -228,8 +228,8 @@ def generate_personality_trader_output( # Removed analysis_data, personality, en
     agent = PersonalityTrader(config_path=config_file_path)
 
     # --- Construct simplified prompt string ---
-    # The agent instance now holds the config loaded from the file
-    system_instructions = agent.generate_prompt()
+    # Pass dates and price to generate_prompt
+    system_instructions = agent.generate_prompt(start_date=start_date, end_date=end_date, current_price=current_price)
 
     # Simple human request focusing on the ticker and desired output format
     human_request_string = (
@@ -331,13 +331,15 @@ def personality_trader_agent(state: AgentState):
         analysis_data_all[ticker] = analysis_data
         
         # Generate a personality-driven trading signal.
-        # Remove personality/enneagram args as they are now loaded from config by the agent instance
+        # Pass dates and price to the output generator
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price for ticker
         trader_signal = generate_personality_trader_output(
             ticker=ticker,
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
-            # personality=state["metadata"].get("personality", "INTJ"), # Removed
-            # enneagram=state["metadata"].get("enneagram", "5")        # Removed
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
 
         trader_analysis[ticker] = {

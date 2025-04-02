@@ -121,13 +121,17 @@ def charlie_munger_agent(state: AgentState):
         }
         
         progress.update_status("charlie_munger_agent", ticker, "Generating Charlie Munger analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         munger_output = generate_munger_output(
-            ticker=ticker, 
-            analysis_data=analysis_data,
+            ticker=ticker,
+            analysis_data=analysis_data[ticker], # Pass specific ticker's analysis
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
-        
+
         munger_analysis[ticker] = {
             "signal": munger_output.signal,
             "confidence": munger_output.confidence,
@@ -659,11 +663,14 @@ def analyze_news_sentiment(news_items: list) -> str:
     return f"Qualitative review of {len(news_items)} recent news items would be needed"
 
 
-def generate_munger_output(
+def generate_munger_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> CharlieMungerSignal:
     """
     Generates investment decisions in the style of Charlie Munger.
@@ -683,7 +690,7 @@ def generate_munger_output(
             8. Never overpay, always demand a margin of safety.
             9. Avoid complexity and businesses you don't understand.
             10. "Invert, always invert" - focus on avoiding stupidity rather than seeking brilliance.
-            
+
             Rules:
             - Praise businesses with predictable, consistent operations and cash flows.
             - Value businesses with high ROIC and pricing power.
@@ -693,16 +700,17 @@ def generate_munger_output(
             - Be skeptical of businesses with rapidly changing dynamics or excessive share dilution.
             - Avoid excessive leverage or financial engineering.
             - Provide a rational, data-driven recommendation (bullish, bearish, or neutral).
-            
+
             When providing your reasoning, be thorough and specific by:
             1. Explaining the key factors that influenced your decision the most (both positive and negative)
             2. Applying at least 2-3 specific mental models or disciplines to explain your thinking
             3. Providing quantitative evidence where relevant (e.g., specific ROIC values, margin trends)
-            4. Citing what you would "avoid" in your analysis (invert the problem)
-            5. Using Charlie Munger's direct, pithy conversational style in your explanation
-            
-            For example, if bullish: "The high ROIC of 22% demonstrates the company's moat. When applying basic microeconomics, we can see that competitors would struggle to..."
-            For example, if bearish: "I see this business making a classic mistake in capital allocation. As I've often said about [relevant Mungerism], this company appears to be..."
+            4. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
+            5. Citing what you would "avoid" in your analysis (invert the problem)
+            6. Using Charlie Munger's direct, pithy conversational style in your explanation
+
+            For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, the high ROIC of 22% demonstrates the company's moat..."
+            For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, I see this business making a classic mistake..."
             """
         ),
         (
@@ -724,7 +732,10 @@ def generate_munger_output(
 
     prompt = template.invoke({
         "analysis_data": json.dumps(analysis_data, indent=2),
-        "ticker": ticker
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
     })
 
     def create_default_charlie_munger_signal():

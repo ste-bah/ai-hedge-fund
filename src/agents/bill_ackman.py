@@ -84,13 +84,17 @@ def bill_ackman_agent(state: AgentState):
         }
         
         progress.update_status("bill_ackman_agent", ticker, "Generating Bill Ackman analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         ackman_output = generate_ackman_output(
-            ticker=ticker, 
-            analysis_data=analysis_data,
+            ticker=ticker,
+            analysis_data=analysis_data[ticker], # Pass specific ticker's analysis
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
-        
+
         ackman_analysis[ticker] = {
             "signal": ackman_output.signal,
             "confidence": ackman_output.confidence,
@@ -335,11 +339,14 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
     }
 
 
-def generate_ackman_output(
+def generate_ackman_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> BillAckmanSignal:
     """
     Generates investment decisions in the style of Bill Ackman.
@@ -364,17 +371,18 @@ def generate_ackman_output(
             - Buy at a discount to intrinsic value; higher discount => stronger conviction.
             - Engage if management is suboptimal or if there's a path for strategic improvements.
             - Provide a rational, data-driven recommendation (bullish, bearish, or neutral).
-            
+
             When providing your reasoning, be thorough and specific by:
             1. Explaining the quality of the business and its competitive advantages in detail
             2. Highlighting the specific financial metrics that most influenced your decision (FCF, margins, leverage)
             3. Discussing any potential for operational improvements or management changes
             4. Providing a clear valuation assessment with numerical evidence
-            5. Identifying specific catalysts that could unlock value
-            6. Using Bill Ackman's confident, analytical, and sometimes confrontational style
-            
-            For example, if bullish: "This business generates exceptional free cash flow with a 15% margin and has a dominant market position that competitors can't easily replicate. Trading at only 12x FCF, there's a 40% discount to intrinsic value, and management's recent capital allocation decisions suggest..."
-            For example, if bearish: "Despite decent market position, FCF margins have deteriorated from 12% to 8% over three years. Management continues to make poor capital allocation decisions by pursuing low-ROIC acquisitions. Current valuation at 18x FCF provides no margin of safety given the operational challenges..."
+            5. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
+            6. Identifying specific catalysts that could unlock value
+            7. Using Bill Ackman's confident, analytical, and sometimes confrontational style
+
+            For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, this business generates exceptional free cash flow..."
+            For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, FCF margins have deteriorated..."
             """
         ),
         (
@@ -396,7 +404,10 @@ def generate_ackman_output(
 
     prompt = template.invoke({
         "analysis_data": json.dumps(analysis_data, indent=2),
-        "ticker": ticker
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
     })
 
     def create_default_bill_ackman_signal():

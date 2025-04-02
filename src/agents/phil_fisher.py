@@ -140,11 +140,15 @@ def phil_fisher_agent(state: AgentState):
         }
 
         progress.update_status("phil_fisher_agent", ticker, "Generating Phil Fisher-style analysis")
+        latest_price = state["data"]["latest_prices"].get(ticker, 0.0) # Get latest price
         fisher_output = generate_fisher_output(
             ticker=ticker,
-            analysis_data=analysis_data,
+            analysis_data=analysis_data[ticker], # Pass specific ticker's analysis
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
+            start_date=state["data"]["start_date"],
+            end_date=state["data"]["end_date"],
+            current_price=latest_price
         )
 
         fisher_analysis[ticker] = {
@@ -525,11 +529,14 @@ def analyze_sentiment(news_items: list) -> dict:
     return {"score": score, "details": "; ".join(details)}
 
 
-def generate_fisher_output(
+def generate_fisher_output( # Added dates and price
     ticker: str,
     analysis_data: dict[str, any],
     model_name: str,
     model_provider: str,
+    start_date: str,
+    end_date: str,
+    current_price: float,
 ) -> PhilFisherSignal:
     """
     Generates a JSON signal in the style of Phil Fisher.
@@ -552,12 +559,12 @@ def generate_fisher_output(
               3. Highlighting R&D investments and product pipeline that could drive future growth
               4. Assessing consistency of margins and profitability metrics with precise numbers
               5. Explaining competitive advantages that could sustain growth over 3-5+ years
-              6. Using Phil Fisher's methodical, growth-focused, and long-term oriented voice
-              
-              For example, if bullish: "This company exhibits the sustained growth characteristics we seek, with revenue increasing at 18% annually over five years. Management has demonstrated exceptional foresight by allocating 15% of revenue to R&D, which has produced three promising new product lines. The consistent operating margins of 22-24% indicate pricing power and operational efficiency that should continue to..."
-              
-              For example, if bearish: "Despite operating in a growing industry, management has failed to translate R&D investments (only 5% of revenue) into meaningful new products. Margins have fluctuated between 10-15%, showing inconsistent operational execution. The company faces increasing competition from three larger competitors with superior distribution networks. Given these concerns about long-term growth sustainability..."
-              
+              6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
+              7. Using Phil Fisher's methodical, growth-focused, and long-term oriented voice
+
+              For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, this company exhibits the sustained growth characteristics we seek..."
+              For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, despite operating in a growing industry, management has failed..."
+
               You must output a JSON object with:
                 - "signal": "bullish" or "bearish" or "neutral"
                 - "confidence": a float between 0 and 100
@@ -582,7 +589,13 @@ def generate_fisher_output(
         ]
     )
 
-    prompt = template.invoke({"analysis_data": json.dumps(analysis_data, indent=2), "ticker": ticker})
+    prompt = template.invoke({
+        "analysis_data": json.dumps(analysis_data, indent=2),
+        "ticker": ticker,
+        "start_date": start_date, # Pass date
+        "end_date": end_date,     # Pass date
+        "current_price": current_price # Pass price
+    })
 
     def create_default_signal():
         return PhilFisherSignal(
