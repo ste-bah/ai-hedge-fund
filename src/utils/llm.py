@@ -35,31 +35,47 @@ def call_llm(
     
     model_info = get_model_info(model_name)
     llm = get_model(model_name, model_provider)
-    
-    # For non-JSON support models, we can use structured output
-    if not (model_info and not model_info.has_json_mode()):
-        llm = llm.with_structured_output(
-            pydantic_model,
-            method="json_mode",
-        )
-    
+
+    # --- Bypassing with_structured_output ---
+    # # For non-JSON support models, we can use structured output
+    # if not (model_info and not model_info.has_json_mode()):
+    #     llm = llm.with_structured_output(
+    #         pydantic_model,
+    #         method="json_mode",
+    #     )
+    # --- End Bypass ---
+
     # Call the LLM with retries
     for attempt in range(max_retries):
         try:
-            # Call the LLM
+            # Call the LLM - always get raw response
             result = llm.invoke(prompt)
-            
-            # For non-JSON support models, we need to extract and parse the JSON manually
-            if model_info and not model_info.has_json_mode():
-                parsed_result = extract_json_from_deepseek_response(result.content)
-                if parsed_result:
+            raw_content = result.content if hasattr(result, 'content') else str(result)
+
+            # --- Manual Parsing Logic ---
+            parsed_result = None
+            try:
+                # Attempt direct JSON parsing first
+                parsed_result = json.loads(raw_content)
+            except json.JSONDecodeError:
+                # Fallback to markdown extraction if direct parsing fails
+                parsed_result = extract_json_from_deepseek_response(raw_content)
+
+            if parsed_result:
+                try:
+                    # Validate and instantiate the Pydantic model
                     return pydantic_model(**parsed_result)
-            else:
-                return result
-                
+                except Exception as validation_error:
+                    print(f"Pydantic validation error: {validation_error}")
+                    # Fall through to retry/default logic if validation fails
+            # --- End Manual Parsing Logic ---
+
+            # If parsing/validation failed, raise an error to trigger retry
+            raise ValueError("Failed to parse or validate LLM response")
+
         except Exception as e:
             if agent_name:
-                progress.update_status(agent_name, None, f"Error - retry {attempt + 1}/{max_retries}")
+                progress.update_status(agent_name, None, f"Error - retry {attempt + 1}/{max_retries}: {e}")
             
             if attempt == max_retries - 1:
                 print(f"Error in LLM call after {max_retries} attempts: {e}")

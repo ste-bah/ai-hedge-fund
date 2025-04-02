@@ -7,7 +7,7 @@ from tools.api import (
     get_company_news,
 )
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage # Added SystemMessage
 from pydantic import BaseModel
 import json
 from typing_extensions import Literal
@@ -162,37 +162,30 @@ class PersonalityTrader:
         self.enneagram_adjustments = self.config.get("enneagram_adjustments", {})
         self.personality_adjustment = self.personality_adjustments.get(self.personality, 1.0)
         self.enneagram_adjustment = self.enneagram_adjustments.get(self.enneagram, 1.0)
-    
-    def generate_prompt(self, ticker: str, analysis_data: dict) -> str:
+
+    def generate_prompt(self) -> str:
+        """Generates the static instruction part of the system prompt."""
         personality_desc = self.personality_traits.get(self.personality, "")
         enneagram_desc = self.enneagram_traits.get(self.enneagram, "")
-        
-        system_message = (
+
+        instructions = (
             f"You are a Personality Trader AI agent whose decisions are deeply influenced by your unique character.\n"
             f"Your MBTI personality type is {self.personality}: {personality_desc}\n"
             f"Your Enneagram type is {self.enneagram}: {enneagram_desc}\n\n"
             "When analyzing market data, integrate your strengths and be mindful of your potential pitfalls. "
             "For example, if you are highly analytical, rely on quantitative evidence; if you are more spontaneous, "
             "be alert to rapid market changes while tempering impulsiveness with caution.\n\n"
-            "Your task is to evaluate the following market data and generate a trading signal. "
+            "Your task is to evaluate the market data provided (implicitly) and generate a trading signal. "
             "Your response should include:\n"
             "1. A clear decision: bullish, bearish, or neutral.\n"
             "2. A confidence level (0-100) reflecting your personality-driven risk appetite.\n"
             "3. Detailed reasoning that incorporates at least 2-3 aspects of your personality and enneagram traits, "
             "including any typical drawbacks you normally mitigate.\n"
             "4. Relevant quantitative evidence (e.g., price deviations, trend analysis).\n\n"
-            "Market Data for analysis:\n"
-            f"Ticker: {ticker}\n"
-            f"{json.dumps(analysis_data, indent=2)}\n\n"
-            "Return your response in the following JSON format:\n"
-            "{\n"
-            '  "signal": "bullish/bearish/neutral",\n'
-            '  "confidence": float (0-100),\n'
-            '  "reasoning": "string"\n'
-            "}\n"
+            "Return your response strictly as a JSON object with the following keys: 'signal' (string: 'bullish', 'bearish', or 'neutral'), 'confidence' (float: 0-100), and 'reasoning' (string)." # Describe format, don't show example
         )
-        return system_message
-    
+        return instructions
+
     def decide(self, market_data: dict) -> str:
         # Calculate an adjusted threshold based on personality and enneagram multipliers.
         adjusted_threshold = self.base_threshold * self.personality_adjustment * self.enneagram_adjustment
@@ -210,9 +203,9 @@ class PersonalityTrader:
         else:
             return "neutral"
 
-def generate_personality_trader_output(
+def generate_personality_trader_output( # Removed analysis_data parameter
     ticker: str,
-    analysis_data: dict,
+    # analysis_data: dict, # Removed
     model_name: str,
     model_provider: str,
     personality: str,
@@ -265,23 +258,23 @@ def generate_personality_trader_output(
     agent.risk_appetite = config.get("risk_appetite", 1.0)
     agent.personality_adjustment = config["personality_adjustments"].get(personality, 1.0)
     agent.enneagram_adjustment = config["enneagram_adjustments"].get(enneagram, 1.0)
-    
-    system_prompt = agent.generate_prompt(ticker, analysis_data)
-    human_prompt = (
-        "Based on the system prompt above, analyze the market data and generate a trading signal. "
-        "Return your response in JSON format with keys 'signal', 'confidence', and 'reasoning'."
+
+    # --- Construct simplified prompt string ---
+    system_instructions = agent.generate_prompt() # Get static instructions
+
+    # Simple human request focusing on the ticker and desired output format
+    human_request_string = (
+        f"\n\nAnalyze the stock with ticker {ticker} based on your personality profile and the instructions above. "
+        "Generate the trading signal in the specified JSON format."
     )
-    
-    template = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", human_prompt)
-    ])
-    
-    prompt = template.invoke({
-        "analysis_data": json.dumps(analysis_data, indent=2),
-        "ticker": ticker
-    })
-    
+
+    # Combine instructions and request
+    final_prompt_string = f"{system_instructions}{human_request_string}"
+
+    # Wrap the final string in a HumanMessage list
+    prompt_messages = [HumanMessage(content=final_prompt_string)]
+    # --- End prompt construction ---
+
     def create_default_personality_trader_signal():
         return PersonalityTraderSignal(
             signal="neutral",
@@ -290,7 +283,7 @@ def generate_personality_trader_output(
         )
     
     return call_llm(
-        prompt=prompt,
+        prompt=prompt_messages, # Pass the list with HumanMessage
         model_name=model_name,
         model_provider=model_provider,
         pydantic_model=PersonalityTraderSignal,
@@ -357,21 +350,21 @@ def personality_trader_agent(state: AgentState):
             limit=100
         )
         
-        # Compile a simple analysis data structure.
+        # Compile a simple analysis data structure, converting Pydantic models to dicts.
         analysis_data = {
-            "metrics": metrics,
-            "financial_line_items": [item.__dict__ for item in financial_line_items],
+            "metrics": [metric.model_dump() for metric in metrics] if metrics else None,
+            "financial_line_items": [item.model_dump() for item in financial_line_items] if financial_line_items else None,
             "market_cap": market_cap,
-            "insider_trades": [trade.__dict__ for trade in insider_trades] if insider_trades else None,
-            "company_news": company_news
+            "insider_trades": [trade.model_dump() for trade in insider_trades] if insider_trades else None,
+            "company_news": [news.model_dump() for news in company_news] if company_news else None,
         }
         
         analysis_data_all[ticker] = analysis_data
         
         # Generate a personality-driven trading signal.
-        trader_signal = generate_personality_trader_output(
+        trader_signal = generate_personality_trader_output( # Removed analysis_data argument
             ticker=ticker,
-            analysis_data=analysis_data,
+            # analysis_data=analysis_data, # Removed
             model_name=state["metadata"]["model_name"],
             model_provider=state["metadata"]["model_provider"],
             personality=state["metadata"].get("personality", "INTJ"),

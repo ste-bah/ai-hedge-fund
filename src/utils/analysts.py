@@ -12,6 +12,7 @@ from agents.stanley_druckenmiller import stanley_druckenmiller_agent
 from agents.technicals import technical_analyst_agent
 from agents.valuation import valuation_agent
 from agents.warren_buffett import warren_buffett_agent
+from agents.retardo_agent import personality_trader_agent
 
 # Define analyst configuration - single source of truth
 ANALYST_CONFIG = {
@@ -74,6 +75,11 @@ ANALYST_CONFIG = {
         "display_name": "Valuation Analyst",
         "agent_func": valuation_agent,
         "order": 11,
+    },
+    "personality_trader": {
+        "display_name": "Personality Trader",
+        "agent_func": personality_trader_agent,
+        "order": 12,
     },
 }
 
