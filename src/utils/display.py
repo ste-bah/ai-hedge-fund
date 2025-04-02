@@ -3,6 +3,9 @@ from tabulate import tabulate
 from .analysts import ANALYST_ORDER
 import os
 import json
+from fpdf import FPDF # Import FPDF
+from datetime import datetime # Import datetime
+import textwrap # Already imported, but good to note
 
 
 def sort_agent_signals(signals):
@@ -364,3 +367,179 @@ def format_backtest_row(
             f"{Fore.RED}{bearish_count}{Style.RESET_ALL}",
             f"{Fore.BLUE}{neutral_count}{Style.RESET_ALL}",
         ]
+
+
+# --- PDF Generation Function ---
+
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'AI Hedge Fund Analysis Report', 0, 1, 'C')
+        self.set_font('Arial', '', 8)
+        self.cell(0, 5, f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, 'C')
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+    def chapter_title(self, title):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, title, 0, 1, 'L')
+        self.ln(2)
+
+    def section_title(self, title):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 8, title, 0, 1, 'L')
+        self.ln(1)
+
+    def write_table(self, headers, data, col_widths):
+        self.set_font('Arial', 'B', 9)
+        # Header
+        for i, header in enumerate(headers):
+            self.cell(col_widths[i], 7, header, 1, 0, 'C')
+        self.ln()
+        # Data
+        self.set_font('Arial', '', 8)
+        for row in data:
+            for i, item in enumerate(row):
+                # Use multi_cell for potentially long text like reasoning
+                if i == len(row) - 1 and len(item) > (col_widths[i] / 2): # Heuristic for reasoning column
+                     x = self.get_x()
+                     y = self.get_y()
+                     self.multi_cell(col_widths[i], 5, str(item), border=1, align='L')
+                     self.set_xy(x + col_widths[i], y) # Move position for next cell
+                else:
+                    self.cell(col_widths[i], 5, str(item), 1, 0, 'L' if isinstance(item, str) else 'R')
+            self.ln()
+        self.ln(5) # Add space after table
+
+    def write_key_value(self, key, value):
+         self.set_font('Arial', 'B', 9)
+         self.cell(40, 5, key, border='B')
+         self.set_font('Arial', '', 9)
+         # Use multi_cell for potentially long values like reasoning
+         if isinstance(value, str) and len(value) > 80: # Heuristic for long text
+             x = self.get_x()
+             y = self.get_y()
+             self.multi_cell(0, 5, value, border='B', align='L')
+             self.set_xy(x, self.get_y()) # Reset X for next line, Y is handled by multi_cell
+         else:
+             self.cell(0, 5, str(value), border='B', ln=1)
+
+
+def save_analysis_to_pdf(result: dict, filename: str = "ai_hedge_fund_report.pdf") -> None:
+    """
+    Saves the trading analysis results to a PDF file.
+
+    Args:
+        result (dict): Dictionary containing decisions and analyst signals.
+        filename (str): The name of the output PDF file.
+    """
+    decisions = result.get("decisions")
+    analyst_signals_data = result.get("analyst_signals", {})
+    if not decisions:
+        print(f"{Fore.RED}No trading decisions available to save to PDF.{Style.RESET_ALL}")
+        return
+
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # --- Analysis per Ticker ---
+    pdf.chapter_title("Ticker Analysis")
+
+    for ticker, decision in decisions.items():
+        pdf.section_title(f"Analysis for {ticker}")
+
+        # Agent Analysis Table
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(0, 6, "Agent Analysis:", 0, 1)
+        agent_headers = ["Agent", "Signal", "Confidence", "Reasoning"]
+        # Estimate column widths (total width ~190 for A4 portrait)
+        agent_col_widths = [40, 20, 25, 105]
+        agent_table_data = []
+
+        # Sort agents for consistent order in PDF
+        sorted_agent_keys = sorted(
+            analyst_signals_data.keys(),
+            key=lambda k: {name: idx for idx, (_, name) in enumerate(ANALYST_ORDER)}.get(k.replace('_agent', ''), 999)
+        )
+
+        for agent_key in sorted_agent_keys:
+            signals = analyst_signals_data.get(agent_key, {})
+            if ticker not in signals:
+                continue
+            if agent_key == "risk_management_agent": # Skip risk agent here
+                 continue
+
+            signal_data = signals[ticker]
+            agent_name = agent_key.replace("_agent", "").replace("_", " ").title()
+            signal_type = signal_data.get("signal", "").upper()
+            confidence = f"{signal_data.get('confidence', 0):.1f}%"
+            reasoning = signal_data.get("reasoning", "")
+            # Basic text wrapping for PDF cell
+            wrapped_reasoning = '\n'.join(textwrap.wrap(str(reasoning), width=60)) # Adjust width as needed
+
+            agent_table_data.append([agent_name, signal_type, confidence, wrapped_reasoning])
+
+        if agent_table_data:
+            pdf.write_table(agent_headers, agent_table_data, agent_col_widths)
+        else:
+             pdf.set_font('Arial', '', 9)
+             pdf.cell(0, 5, "No analyst signals available for this ticker.", 0, 1)
+             pdf.ln(3)
+
+
+        # Trading Decision
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(0, 6, "Trading Decision:", 0, 1)
+        pdf.write_key_value("Action", decision.get("action", "N/A").upper())
+        pdf.write_key_value("Quantity", str(decision.get("quantity", "N/A")))
+        pdf.write_key_value("Confidence", f"{decision.get('confidence', 0):.1f}%")
+        pdf.write_key_value("Reasoning", str(decision.get("reasoning", "N/A")))
+        pdf.ln(5)
+
+    # --- Portfolio Summary ---
+    pdf.add_page()
+    pdf.chapter_title("Portfolio Summary")
+
+    # Portfolio Decisions Table
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(0, 6, "Decisions Summary:", 0, 1)
+    summary_headers = ["Ticker", "Action", "Quantity", "Confidence"]
+    summary_col_widths = [40, 40, 40, 40]
+    summary_table_data = []
+    portfolio_manager_reasoning = None
+
+    for ticker, decision in decisions.items():
+        # Capture portfolio manager reasoning (assuming it's the same in all decisions)
+        if not portfolio_manager_reasoning and decision.get("reasoning"):
+             portfolio_manager_reasoning = str(decision.get("reasoning", "N/A"))
+
+        summary_table_data.append([
+            ticker,
+            decision.get("action", "N/A").upper(),
+            str(decision.get("quantity", "N/A")),
+            f"{decision.get('confidence', 0):.1f}%"
+        ])
+
+    pdf.write_table(summary_headers, summary_table_data, summary_col_widths)
+
+    # Portfolio Strategy Reasoning
+    if portfolio_manager_reasoning:
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(0, 6, "Portfolio Strategy:", 0, 1)
+        pdf.set_font('Arial', '', 9)
+        pdf.multi_cell(0, 5, portfolio_manager_reasoning)
+        pdf.ln(5)
+
+    # --- Save PDF ---
+    try:
+        pdf.output(filename, "F")
+        print(f"\n{Fore.GREEN}Successfully saved analysis report to: {filename}{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"\n{Fore.RED}Error saving PDF report to {filename}: {e}{Style.RESET_ALL}")
+
+# --- End PDF Generation Function ---

@@ -16,7 +16,7 @@ from agents.warren_buffett import warren_buffett_agent
 from agents.retardo_agent import PersonalityTrader
 from graph.state import AgentState
 from agents.valuation import valuation_agent
-from utils.display import print_trading_output
+from utils.display import print_trading_output, save_analysis_to_pdf # Import PDF function
 
 from utils.analysts import ANALYST_ORDER, get_analyst_nodes
 from utils.progress import progress
@@ -170,6 +170,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--show-agent-graph", action="store_true", help="Show the agent graph"
     )
+    parser.add_argument( # Add PDF flag
+        "--save-pdf",
+        type=str,
+        nargs='?', # Makes it optional
+        const="ai_hedge_fund_report.pdf", # Default filename if flag is present without value
+        metavar="FILENAME",
+        help="Save the analysis report to a PDF file (optional filename)"
+    )
 
     args = parser.parse_args()
 
@@ -314,3 +322,8 @@ if __name__ == "__main__":
         # Remove all duplicates below this line from the previous attempt
     )
     print_trading_output(result)
+
+    # Save to PDF if requested
+    if args.save_pdf:
+        pdf_filename = args.save_pdf
+        save_analysis_to_pdf(result, filename=pdf_filename)
