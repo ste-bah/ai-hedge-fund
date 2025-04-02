@@ -72,9 +72,17 @@ def get_financial_metrics(
         headers["X-API-KEY"] = api_key
 
     url = f"https://api.financialdatasets.ai/financial-metrics/?ticker={ticker}&report_period_lte={end_date}&limit={limit}&period={period}"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+    try:
+        # Add explicit timeout and verification
+        response = requests.get(url, headers=headers, timeout=30, verify=True)
+        response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+    except requests.exceptions.RequestException as e:
+         # Catch potential request errors (including SSLError, Timeout, ConnectionError)
+        raise Exception(f"Error fetching data for {ticker}: {e}") from e
+
+    # Removed status code check here as raise_for_status handles it
+    # if response.status_code != 200:
+    #     raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
 
     # Parse response with Pydantic model
     metrics_response = FinancialMetricsResponse(**response.json())
