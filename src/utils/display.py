@@ -383,80 +383,101 @@ class PDF(FPDF):
             self.add_font("DejaVu", "B", os.path.join(font_dir, "DejaVuSans-Bold.ttf"), uni=True)
             self.add_font("DejaVu", "I", os.path.join(font_dir, "DejaVuSans-Oblique.ttf"), uni=True)
             self.add_font("DejaVu", "BI", os.path.join(font_dir, "DejaVuSans-BoldOblique.ttf"), uni=True)
-            # Do NOT set fallback font, just use DejaVu explicitly
-            # self.set_fallback_fonts(["DejaVu"])
+            # Now set as fallback
+            self.set_fallback_fonts(["DejaVu"])
         except Exception as e: # Catch broader exceptions during font loading/setting
-             print(f"{Fore.RED}FPDF Error adding font: {e}. Ensure font files are in {font_dir}.{Style.RESET_ALL}")
+             print(f"{Fore.RED}FPDF Error adding/setting font: {e}. Ensure font files are in {font_dir}.{Style.RESET_ALL}")
              # Continue without unicode font if adding fails, might still error later
 
     def header(self):
-        self.set_font('DejaVu', 'B', 12) # Use DejaVu
-        self.cell(0, 10, 'AI Hedge Fund Analysis Report', 0, 1, 'C')
-        self.set_font('DejaVu', '', 8) # Use DejaVu
-        self.cell(0, 5, f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, 'C')
-        self.ln(5)
+        self.set_font('DejaVu', 'B', 11) # Reduced size
+        self.cell(0, 8, 'AI Hedge Fund Analysis Report', 0, 1, 'C') # Reduced height
+        self.set_font('DejaVu', '', 7) # Reduced size
+        self.cell(0, 4, f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, 'C') # Reduced height
+        self.ln(2) # Reduced spacing
 
     def footer(self):
-        self.set_y(-15)
-        self.set_font('DejaVu', 'I', 8) # Use DejaVu
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+        self.set_y(-12) # Move footer up slightly
+        self.set_font('DejaVu', 'I', 7) # Reduced size
+        self.cell(0, 8, f'Page {self.page_no()}', 0, 0, 'C') # Reduced height
 
     def chapter_title(self, title):
-        self.set_font('DejaVu', 'B', 14) # Use DejaVu
-        self.cell(0, 10, title, 0, 1, 'L')
-        self.ln(2)
+        self.set_font('DejaVu', 'B', 13) # Reduced size
+        self.cell(0, 8, title, 0, 1, 'L') # Reduced height
+        self.ln(1) # Reduced spacing
 
     def section_title(self, title):
-        self.set_font('DejaVu', 'B', 12) # Use DejaVu
-        self.cell(0, 8, title, 0, 1, 'L')
-        self.ln(1)
+        self.set_font('DejaVu', 'B', 11) # Reduced size
+        self.cell(0, 6, title, 0, 1, 'L') # Reduced height
+        self.ln(1) # Reduced spacing
 
     def write_table(self, headers, data, col_widths):
-        self.set_font('DejaVu', 'B', 9) # Use DejaVu
-        # Header
-        for i, header in enumerate(headers):
-            self.cell(col_widths[i], 7, header, 1, 0, 'C')
-        self.ln()
-        # Data
-        self.set_font('DejaVu', '', 8) # Use DejaVu
-        for row in data:
-            row_height = 5 # Default row height
-            # Check max height needed for this row due to multi_cell
-            max_lines = 1
-            for i, item in enumerate(row):
-                 if i == len(row) - 1 and len(str(item)) > (col_widths[i] / 1.8): # Heuristic for reasoning column width check
-                     # Use dry_run to calculate needed lines without drawing
-                     lines = self.multi_cell(col_widths[i], 5, str(item), border=0, align='L', dry_run=True, output='LINES')
-                     max_lines = max(max_lines, len(lines))
-            row_height = max(row_height, max_lines * 5) # Adjust row height based on max lines needed
+        cell_height = 4.5 # Reduced cell height
+        header_height = 5 # Reduced header height
+        line_height_ratio = 1.0 # Adjust line height within cells if needed
 
-            # Draw cells with potentially adjusted height
-            current_y = self.get_y()
+        self.set_font('DejaVu', 'B', 8) # Reduced size
+        # Header - Check page break before drawing
+        if self.get_y() + header_height > self.page_break_trigger:
+            self.add_page()
+        for i, header in enumerate(headers):
+            self.cell(col_widths[i], header_height, header, 1, 0, 'C')
+        self.ln(header_height)
+
+        # Data
+        self.set_font('DejaVu', '', 7) # Reduced size
+        for row in data:
+            # Calculate max height needed for this row
+            max_h = cell_height
+            for i, item in enumerate(row):
+                 # Estimate number of lines needed for multi_cell
+                 lines = self.multi_cell(col_widths[i], cell_height, str(item), border=0, align='L', dry_run=True, output='LINES')
+                 h = len(lines) * cell_height * line_height_ratio
+                 max_h = max(max_h, h)
+
+            # Check if the row fits on the current page BEFORE drawing it
+            if self.get_y() + max_h > self.page_break_trigger:
+                self.add_page() # Add page break BEFORE drawing the row
+
+            # Draw the row cells using the calculated max_h
+            current_y = self.get_y() # Store Y position at the start of the row
             for i, item in enumerate(row):
                  x = self.get_x()
                  # Draw the cell using multi_cell to handle wrapping
-                 self.multi_cell(col_widths[i], 5, str(item), border=1, align='L' if isinstance(item, str) else 'R', max_line_height=5, new_x="RIGHT", new_y="TOP")
-                 # After drawing, reset Y to the starting Y of the row for the next cell
+                 self.multi_cell(col_widths[i], cell_height, str(item), border=1, align='L' if isinstance(item, str) else 'R', max_line_height=cell_height, new_x="RIGHT", new_y="TOP")
+                 # Reset Y to the starting Y of the row for the next cell
                  self.set_y(current_y)
                  # Set X for the next cell
                  self.set_x(x + col_widths[i])
 
-            self.ln(row_height) # Move down by the calculated row height
-        self.ln(5) # Add space after table
+            # Move down by the calculated max height for the row
+            self.ln(max_h)
+        self.ln(2) # Reduced space after table
 
 
     def write_key_value(self, key, value):
-        self.set_font('DejaVu', 'B', 9) # Use DejaVu
-        self.cell(40, 5, key, border='B')
-        self.set_font('DejaVu', '', 9) # Use DejaVu
+        cell_height = 4.5 # Reduced cell height
+        self.set_font('DejaVu', 'B', 8) # Reduced size
+        # Check page break before drawing key/value pair
+        # Estimate height needed for value (assume 1 line unless long)
+        value_str = str(value)
+        needed_h = cell_height
+        if isinstance(value, str) and len(value) > 90: # Adjusted heuristic
+             lines = self.multi_cell(self.w - self.l_margin - self.r_margin - 35, cell_height, value_str, border=0, dry_run=True, output='LINES')
+             needed_h = max(cell_height, len(lines) * cell_height)
+
+        if self.get_y() + needed_h > self.page_break_trigger:
+            self.add_page()
+
+        self.cell(35, cell_height, key, border='B') # Reduced width slightly
+        self.set_font('DejaVu', '', 8) # Reduced size
         # Use multi_cell for potentially long values like reasoning
-        if isinstance(value, str) and len(value) > 80: # Heuristic for long text
+        if isinstance(value, str) and len(value) > 90: # Adjusted heuristic
             x = self.get_x() # Get current X position before multi_cell
-            self.multi_cell(0, 5, value, border='B', align='L') # Use remaining width
-            # multi_cell automatically moves Y, but X might reset.
-            # We want the next line to start at the beginning, so no need to set_xy here.
+            self.multi_cell(0, cell_height, value_str, border='B', align='L') # Use remaining width
+            # multi_cell moves Y, X might reset, which is fine here
         else:
-            self.cell(0, 5, str(value), border='B', ln=1) # Move to next line
+            self.cell(0, cell_height, value_str, border='B', ln=1) # Move to next line
 
 
 def save_analysis_to_pdf(result: dict, filename: str = "ai_hedge_fund_report.pdf") -> None:
@@ -484,8 +505,8 @@ def save_analysis_to_pdf(result: dict, filename: str = "ai_hedge_fund_report.pdf
         pdf.section_title(f"Analysis for {ticker}")
 
         # Agent Analysis Table
-        pdf.set_font('DejaVu', 'B', 10) # Use DejaVu
-        pdf.cell(0, 6, "Agent Analysis:", 0, 1)
+        pdf.set_font('DejaVu', 'B', 9) # Reduced size
+        pdf.cell(0, 5, "Agent Analysis:", 0, 1) # Reduced height
         agent_headers = ["Agent", "Signal", "Confidence", "Reasoning"]
         # Estimate column widths (total width ~190 for A4 portrait)
         agent_col_widths = [40, 20, 25, 105]
@@ -511,34 +532,34 @@ def save_analysis_to_pdf(result: dict, filename: str = "ai_hedge_fund_report.pdf
             reasoning = signal_data.get("reasoning", "")
             # Basic text wrapping for PDF cell
             # Ensure reasoning is a string before wrapping
-            wrapped_reasoning = '\n'.join(textwrap.wrap(str(reasoning), width=60)) # Adjust width as needed
+            wrapped_reasoning = '\n'.join(textwrap.wrap(str(reasoning), width=65)) # Adjusted width for smaller font
 
             agent_table_data.append([agent_name, signal_type, confidence, wrapped_reasoning])
 
         if agent_table_data:
             pdf.write_table(agent_headers, agent_table_data, agent_col_widths)
         else:
-             pdf.set_font('DejaVu', '', 9) # Use DejaVu
-             pdf.cell(0, 5, "No analyst signals available for this ticker.", 0, 1)
-             pdf.ln(3)
+             pdf.set_font('DejaVu', '', 8) # Reduced size
+             pdf.cell(0, 4, "No analyst signals available for this ticker.", 0, 1) # Reduced height
+             pdf.ln(2) # Reduced spacing
 
 
         # Trading Decision
-        pdf.set_font('DejaVu', 'B', 10) # Use DejaVu
-        pdf.cell(0, 6, "Trading Decision:", 0, 1)
+        pdf.set_font('DejaVu', 'B', 9) # Reduced size
+        pdf.cell(0, 5, "Trading Decision:", 0, 1) # Reduced height
         pdf.write_key_value("Action", decision.get("action", "N/A").upper())
         pdf.write_key_value("Quantity", str(decision.get("quantity", "N/A")))
         pdf.write_key_value("Confidence", f"{decision.get('confidence', 0):.1f}%")
         pdf.write_key_value("Reasoning", str(decision.get("reasoning", "N/A")))
-        pdf.ln(5)
+        pdf.ln(3) # Reduced spacing
 
     # --- Portfolio Summary ---
     pdf.add_page()
     pdf.chapter_title("Portfolio Summary")
 
     # Portfolio Decisions Table
-    pdf.set_font('DejaVu', 'B', 10) # Use DejaVu
-    pdf.cell(0, 6, "Decisions Summary:", 0, 1)
+    pdf.set_font('DejaVu', 'B', 9) # Reduced size
+    pdf.cell(0, 5, "Decisions Summary:", 0, 1) # Reduced height
     summary_headers = ["Ticker", "Action", "Quantity", "Confidence"]
     summary_col_widths = [40, 40, 40, 40]
     summary_table_data = []
@@ -560,11 +581,11 @@ def save_analysis_to_pdf(result: dict, filename: str = "ai_hedge_fund_report.pdf
 
     # Portfolio Strategy Reasoning
     if portfolio_manager_reasoning:
-        pdf.set_font('DejaVu', 'B', 10) # Use DejaVu
-        pdf.cell(0, 6, "Portfolio Strategy:", 0, 1)
-        pdf.set_font('DejaVu', '', 9) # Use DejaVu
-        pdf.multi_cell(0, 5, portfolio_manager_reasoning)
-        pdf.ln(5)
+        pdf.set_font('DejaVu', 'B', 9) # Reduced size
+        pdf.cell(0, 5, "Portfolio Strategy:", 0, 1) # Reduced height
+        pdf.set_font('DejaVu', '', 8) # Reduced size
+        pdf.multi_cell(0, 4.5, portfolio_manager_reasoning) # Reduced height
+        pdf.ln(3) # Reduced spacing
 
     # --- Save PDF ---
     try:
