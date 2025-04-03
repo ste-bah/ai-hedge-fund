@@ -470,10 +470,18 @@ def generate_lynch_output( # Added dates and price
                 - Cite the PEG ratio
                 - Mention 'ten-bagger' potential if applicable
                 - Refer to personal or anecdotal observations (e.g., "If my kids love the product...")
-                - Use practical, folksy language
-                - Provide key positives and negatives
-                - **Mention the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-                - Conclude with a clear stance (bullish, bearish, or neutral)
+                - Use practical, folksy language.
+                - Provide key positives and negatives.
+                - **Mention the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+                - Conclude with a clear stance (bullish, bearish, or neutral).
+                - **Structure the reasoning string in this exact TLDR format:**
+                  Strengths:
+                  * [Strength 1 related to GARP/growth/simplicity, with context like dates/price/metrics/PEG]
+                  * [Strength 2...]
+                  Concerns:
+                  * [Concern 1 related to debt/valuation/story, with context...]
+                  * [Concern 2...]
+                  Summary: [One-sentence Lynch-style assessment, maybe mentioning 'ten-bagger' potential]
 
                 Return your final output strictly in JSON with the fields:
                 {{

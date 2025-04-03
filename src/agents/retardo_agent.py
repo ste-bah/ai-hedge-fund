@@ -179,10 +179,17 @@ class PersonalityTrader:
             "Your response should include:\n"
             "1. A clear decision: bullish, bearish, or neutral.\n"
             "2. A confidence level (0-100) reflecting your personality-driven risk appetite.\n"
-            "3. Detailed reasoning that incorporates at least 2-3 aspects of your personality and enneagram traits, "
-            "including any typical drawbacks you normally mitigate. **Crucially, mention the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) in your reasoning.**\n" # Added instruction
-            "4. Relevant quantitative evidence (e.g., price deviations, trend analysis).\n\n"
-            "Return your response strictly as a JSON object with the following keys: 'signal' (string: 'bullish', 'bearish', or 'neutral'), 'confidence' (float: 0-100), and 'reasoning' (string)."
+            "3. Detailed reasoning in TLDR format, incorporating at least 2-3 aspects of your personality and enneagram traits, including any typical drawbacks you normally mitigate. **Crucially, mention the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**\n" # Modified instruction
+            "4. Relevant quantitative evidence (e.g., price deviations, trend analysis) within the bullet points.\n\n"
+            """Return your response strictly as a JSON object with the following keys: 'signal' (string: 'bullish', 'bearish', or 'neutral'), 'confidence' (float: 0-100), and 'reasoning' (string).
+            The 'reasoning' string MUST follow this exact TLDR format:
+            Strengths:
+            * [Strength 1 with context like dates/price/metrics]
+            * [Strength 2 with context...]
+            Concerns:
+            * [Concern 1 with context...]
+            * [Concern 2 with context...]
+            Summary: [One-sentence conclusion]"""
         ).format(start_date=start_date, end_date=end_date, current_price=current_price) # Format the string
         return instructions
 

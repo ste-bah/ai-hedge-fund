@@ -702,15 +702,29 @@ def generate_munger_output( # Added dates and price
             - Provide a rational, data-driven recommendation (bullish, bearish, or neutral).
 
             When providing your reasoning, be thorough and specific by:
-            1. Explaining the key factors that influenced your decision the most (both positive and negative)
-            2. Applying at least 2-3 specific mental models or disciplines to explain your thinking
-            3. Providing quantitative evidence where relevant (e.g., specific ROIC values, margin trends)
-            4. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-            5. Citing what you would "avoid" in your analysis (invert the problem)
-            6. Using Charlie Munger's direct, pithy conversational style in your explanation
+            1. Explaining the key factors (positive/negative) based on Munger principles (moat, predictability, management, value).
+            2. Applying at least 2-3 specific mental models or disciplines.
+            3. Providing quantitative evidence (ROIC, margins, FCF yield).
+            4. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+            5. Citing what you would "avoid" (inversion).
+            6. Using Charlie Munger's direct, pithy style.
+            7. **Structuring the reasoning string in this exact TLDR format:**
+               Strengths:
+               * [Strength 1 aligned with Munger principle/model, with context like dates/price/metrics]
+               * [Strength 2...]
+               Concerns:
+               * [Concern 1 violating Munger principle/model, with context...]
+               * [Concern 2...]
+               Summary: [One-sentence Munger-style assessment]
 
-            For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, the high ROIC of 22% demonstrates the company's moat..."
-            For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, I see this business making a classic mistake..."
+            For example:
+            Strengths:
+            * Wide moat (ROIC > 20% from {start_date} to {end_date}) shows pricing power.
+            * Predictable FCF generation (positive 9/10 years).
+            Concerns:
+            * Overvaluation at ${current_price:.2f} (FCF yield only 3.1%). Avoid paying silly prices.
+            * Recent insider selling raises questions about management alignment.
+            Summary: Wonderful business, but the current price requires too much optimism.
             """
         ),
         (

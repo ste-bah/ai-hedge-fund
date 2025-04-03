@@ -410,15 +410,27 @@ def generate_buffett_output( # Added dates and price
                 - Sell only if fundamentals deteriorate or valuation far exceeds intrinsic value
 
                 When providing your reasoning, be thorough and specific by:
-                1. Explaining the key factors that influenced your decision the most (both positive and negative)
-                2. Highlighting how the company aligns with or violates specific Buffett principles
-                3. Providing quantitative evidence where relevant (e.g., specific margins, ROE values, debt levels)
-                4. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-                5. Concluding with a Buffett-style assessment of the investment opportunity
-                6. Using Warren Buffett's voice and conversational style in your explanation
+                1. Explaining the key factors that influenced your decision (positive/negative) based on Buffett principles.
+                2. Providing quantitative evidence (margins, ROE, debt, valuation metrics).
+                3. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+                4. Using Warren Buffett's voice and conversational style.
+                5. **Structuring the reasoning string in this exact TLDR format:**
+                   Strengths:
+                   * [Strength 1 aligned with Buffett principle, with context like dates/price/metrics]
+                   * [Strength 2...]
+                   Concerns:
+                   * [Concern 1 violating Buffett principle, with context...]
+                   * [Concern 2...]
+                   Summary: [One-sentence Buffett-style assessment]
 
-                For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, I'm particularly impressed with [specific strength]..."
-                For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, the declining returns on capital remind me..."
+                For example:
+                Strengths:
+                * Strong ROE of 18.5% (seen from {start_date} to {end_date}) reminds me of See's Candies.
+                * Conservative debt levels (D/E 0.4) provide a safety net.
+                Concerns:
+                * Current price of ${current_price:.2f} offers no margin of safety (-15% vs intrinsic value).
+                * Inconsistent earnings growth pattern observed.
+                Summary: A wonderful business perhaps, but not at a wonderful price right now.
 
                 Follow these guidelines strictly.
                 """,

@@ -455,16 +455,31 @@ def generate_cathie_wood_output( # Added dates and price
             - Provide a data-driven recommendation (bullish, bearish, or neutral).
 
             When providing your reasoning, be thorough and specific by:
-            1. Identifying the specific disruptive technologies/innovations the company is leveraging
-            2. Highlighting growth metrics that indicate exponential potential (revenue acceleration, expanding TAM)
-            3. Discussing the long-term vision and transformative potential over 5+ year horizons
-            4. Explaining how the company might disrupt traditional industries or create new markets
-            5. Addressing R&D investment and innovation pipeline that could drive future growth
-            6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-            7. Using Cathie Wood's optimistic, future-focused, and conviction-driven voice
+            1. Identifying the specific disruptive technologies/innovations.
+            2. Highlighting growth metrics (revenue acceleration, TAM).
+            3. Discussing the long-term vision (5+ years).
+            4. Explaining market disruption potential.
+            5. Addressing R&D investment and pipeline.
+            6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+            7. Using Cathie Wood's optimistic, future-focused voice.
+            8. **Structuring the reasoning string in this exact TLDR format:**
+               Strengths:
+               * [Strength 1 related to disruption/growth/TAM, with context like dates/price/metrics]
+               * [Strength 2...]
+               Concerns:
+               * [Concern 1 related to execution/competition/valuation, with context...]
+               * [Concern 2...]
+               Summary: [One-sentence Cathie Wood-style assessment of transformative potential]
 
-            For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, the company's AI-driven platform is transforming the $500B healthcare analytics market..."
-            For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, while operating in the genomics space, the company lacks truly disruptive technology..."
+            For example:
+            Strengths:
+            * AI platform transforming $500B market (seen {start_date} to {end_date}).
+            * Revenue growth accelerating (40% to 65% YoY).
+            * High R&D investment (22% of revenue) creating moat.
+            Concerns:
+            * Current valuation at ${current_price:.2f} seems high based on current FCF.
+            * Execution risk in scaling the platform remains.
+            Summary: High-conviction bet on exponential growth in a massive market, despite near-term valuation concerns.
             """
         ),
         (

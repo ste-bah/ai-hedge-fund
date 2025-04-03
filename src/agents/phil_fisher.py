@@ -554,16 +554,31 @@ def generate_fisher_output( # Added dates and price
               5. Rely on thorough research (scuttlebutt) and thorough fundamental checks.
               
               When providing your reasoning, be thorough and specific by:
-              1. Discussing the company's growth prospects in detail with specific metrics and trends
-              2. Evaluating management quality and their capital allocation decisions
-              3. Highlighting R&D investments and product pipeline that could drive future growth
-              4. Assessing consistency of margins and profitability metrics with precise numbers
-              5. Explaining competitive advantages that could sustain growth over 3-5+ years
-              6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-              7. Using Phil Fisher's methodical, growth-focused, and long-term oriented voice
+              1. Discussing growth prospects (revenue, EPS trends).
+              2. Evaluating management quality and capital allocation.
+              3. Highlighting R&D and product pipeline.
+              4. Assessing margin consistency and profitability.
+              5. Explaining competitive advantages (3-5+ year view).
+              6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+              7. Using Phil Fisher's methodical, growth-focused voice.
+              8. **Structuring the reasoning string in this exact TLDR format:**
+                 Strengths:
+                 * [Strength 1 related to growth/quality/R&D, with context like dates/price/metrics]
+                 * [Strength 2...]
+                 Concerns:
+                 * [Concern 1 related to margins/competition/valuation, with context...]
+                 * [Concern 2...]
+                 Summary: [One-sentence Fisher-style assessment focused on long-term compounding potential]
 
-              For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, this company exhibits the sustained growth characteristics we seek..."
-              For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, despite operating in a growing industry, management has failed..."
+              For example:
+              Strengths:
+              * Sustained growth (18% rev CAGR from {start_date} to {end_date}).
+              * Strong R&D pipeline (15% of revenue).
+              * Consistent margins (22-24% operating).
+              Concerns:
+              * Valuation at ${current_price:.2f} seems full (P/E 28x).
+              * Increasing competition in core market.
+              Summary: Exceptional growth company with strong management, justifying a premium valuation for long-term compounding.
 
               You must output a JSON object with:
                 - "signal": "bullish" or "bearish" or "neutral"

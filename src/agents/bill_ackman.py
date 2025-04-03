@@ -373,16 +373,29 @@ def generate_ackman_output( # Added dates and price
             - Provide a rational, data-driven recommendation (bullish, bearish, or neutral).
 
             When providing your reasoning, be thorough and specific by:
-            1. Explaining the quality of the business and its competitive advantages in detail
-            2. Highlighting the specific financial metrics that most influenced your decision (FCF, margins, leverage)
-            3. Discussing any potential for operational improvements or management changes
-            4. Providing a clear valuation assessment with numerical evidence
-            5. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-            6. Identifying specific catalysts that could unlock value
-            7. Using Bill Ackman's confident, analytical, and sometimes confrontational style
+            1. Explaining the business quality, moat, and FCF generation.
+            2. Highlighting key financial metrics (margins, leverage, ROE).
+            3. Discussing valuation and margin of safety.
+            4. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+            5. Identifying potential catalysts or areas for improvement (activist angle).
+            6. Using Bill Ackman's confident, analytical style.
+            7. **Structuring the reasoning string in this exact TLDR format:**
+               Strengths:
+               * [Strength 1 related to quality/moat/FCF, with context like dates/price/metrics]
+               * [Strength 2...]
+               Concerns:
+               * [Concern 1 related to financials/valuation/management, with context...]
+               * [Concern 2...]
+               Summary: [One-sentence Ackman-style assessment, possibly mentioning conviction/activism]
 
-            For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, this business generates exceptional free cash flow..."
-            For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, FCF margins have deteriorated..."
+            For example:
+            Strengths:
+            * Dominant market position and strong brand moat evident from {start_date} to {end_date}.
+            * Consistent FCF generation (Avg FCF margin 18%).
+            Concerns:
+            * Current price of ${current_price:.2f} offers only a 10% margin of safety.
+            * Management's recent capital allocation has been suboptimal.
+            Summary: High-quality business trading near fair value; potential for value creation with better capital discipline.
             """
         ),
         (

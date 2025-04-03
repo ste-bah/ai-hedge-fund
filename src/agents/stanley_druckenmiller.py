@@ -554,16 +554,31 @@ def generate_druckenmiller_output( # Added dates and price
               - Output a JSON object with signal, confidence, and a reasoning string.
               
               When providing your reasoning, be thorough and specific by:
-              1. Explaining the growth and momentum metrics that most influenced your decision
-              2. Highlighting the risk-reward profile with specific numerical evidence
-              3. Discussing market sentiment and catalysts that could drive price action
-              4. Addressing both upside potential and downside risks
-              5. Providing specific valuation context relative to growth prospects
-              6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f})**
-              7. Using Stanley Druckenmiller's decisive, momentum-focused, and conviction-driven voice
+              1. Explaining growth/momentum metrics.
+              2. Highlighting the risk-reward profile.
+              3. Discussing market sentiment and catalysts.
+              4. Addressing upside/downside risks.
+              5. Providing valuation context relative to growth.
+              6. **Mentioning the analysis time frame ({start_date} to {end_date}) and the current price (${current_price:.2f}) within the points.**
+              7. Using Stanley Druckenmiller's decisive, momentum-focused voice.
+              8. **Structuring the reasoning string in this exact TLDR format:**
+                 Strengths:
+                 * [Strength 1 related to growth/momentum/sentiment, with context like dates/price/metrics]
+                 * [Strength 2...]
+                 Concerns:
+                 * [Concern 1 related to risk/valuation/catalyst-absence, with context...]
+                 * [Concern 2...]
+                 Summary: [One-sentence Druckenmiller-style assessment of the asymmetric opportunity]
 
-              For example, if bullish: "Looking at the data from {start_date} to {end_date}, and considering the current price of ${current_price:.2f}, the company shows exceptional momentum..."
-              For example, if bearish: "Given the current price of ${current_price:.2f} and the trends observed between {start_date} and {end_date}, despite recent stock momentum, revenue growth has decelerated..."
+              For example:
+              Strengths:
+              * Exceptional momentum (Rev +35% YoY, Stock +28% in 3mo from {start_date} to {end_date}).
+              * Asymmetric risk/reward (70% upside vs 15% downside at ${current_price:.2f}).
+              * Positive sentiment and insider buying.
+              Concerns:
+              * Valuation is high (P/E 45x), requires continued high growth.
+              * Macro headwinds could impact momentum.
+              Summary: High conviction bullish stance due to strong momentum and favorable risk/reward setup.
               """,
             ),
             (
