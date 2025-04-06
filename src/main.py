@@ -292,19 +292,36 @@ if __name__ == "__main__":
     # Fetch latest prices before running
     latest_prices = {}
     print("\nFetching latest prices...")
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+    max_days_back = 7 # Look back up to a week for the last trading day
+
     for ticker in tickers:
-        try:
-            # Fetch price just for the end_date
-            prices = get_prices(ticker, end_date, end_date)
-            if prices:
-                latest_prices[ticker] = prices[0].close # Assuming the first (and only) price is the latest
-                print(f"  {ticker}: ${latest_prices[ticker]:.2f}")
-            else:
-                latest_prices[ticker] = 0.0 # Or handle error/default appropriately
-                print(f"  {ticker}: Price not found for {end_date}")
-        except Exception as e:
-            print(f"  Error fetching price for {ticker}: {e}")
-            latest_prices[ticker] = 0.0 # Default on error
+        latest_prices[ticker] = 0.0 # Default price
+        found_price = False
+        for days_back in range(1, max_days_back + 1):
+            # Calculate the date to check
+            check_date_obj = end_date_obj - relativedelta(days=days_back)
+            check_date_str = check_date_obj.strftime("%Y-%m-%d")
+            
+            try:
+                print(f"  Attempting to fetch {ticker} price for {check_date_str}...")
+                prices = get_prices(ticker, check_date_str, check_date_str)
+                if prices:
+                    latest_prices[ticker] = prices[0].close
+                    print(f"  {Fore.GREEN}Success:{Style.RESET_ALL} {ticker}: ${latest_prices[ticker]:.2f} (as of {check_date_str})")
+                    found_price = True
+                    break # Found the price, move to next ticker
+                else:
+                    # API returned 200 but no price data for this date (likely non-trading day)
+                    print(f"  No price data found for {ticker} on {check_date_str}.")
+            except Exception as e:
+                # Handle potential 404s or other API errors for this specific date check
+                print(f"  {Fore.YELLOW}Info: Could not fetch price for {ticker} on {check_date_str} ({e}). Trying earlier date.{Style.RESET_ALL}")
+                # Continue loop to try the previous day
+
+        if not found_price:
+             print(f"  {Fore.RED}Error: Could not find recent price for {ticker} within the last {max_days_back} days. Using 0.0.{Style.RESET_ALL}")
+
     print("Done fetching latest prices.\n")
 
 

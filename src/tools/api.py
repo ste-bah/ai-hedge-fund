@@ -119,9 +119,13 @@ def search_line_items(
         "period": period,
         "limit": limit,
     }
-    response = requests.post(url, headers=headers, json=body)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+    try:
+        # Ensure SSL verification is enabled (default)
+        response = requests.post(url, headers=headers, json=body, timeout=30, verify=True) 
+        response.raise_for_status() # Check for HTTP errors
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Error fetching line items for {ticker}: {e}") from e
+        
     data = response.json()
     response_model = LineItemResponse(**data)
     search_results = response_model.search_results
