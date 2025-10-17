@@ -19,16 +19,21 @@ def fundamentals_agent(state: AgentState):
     for ticker in tickers:
         progress.update_status("fundamentals_agent", ticker, "Fetching financial metrics")
 
-        # Get the financial metrics
-        financial_metrics = get_financial_metrics(
-            ticker=ticker,
-            end_date=end_date,
-            period="ttm",
-            limit=10,
-        )
+        try:
+            # Get the financial metrics
+            financial_metrics = get_financial_metrics(
+                ticker=ticker,
+                end_date=end_date,
+                period="ttm",
+                limit=10,
+            )
 
-        if not financial_metrics:
-            progress.update_status("fundamentals_agent", ticker, "Failed: No financial metrics found")
+            if not financial_metrics:
+                progress.update_status("fundamentals_agent", ticker, "Failed: No financial metrics found")
+                continue
+        except Exception as e:
+            # Log the error and continue with the next ticker
+            progress.update_status("fundamentals_agent", ticker, f"Failed: Error fetching financial metrics: {e}")
             continue
 
         # Pull the most recent financial metrics

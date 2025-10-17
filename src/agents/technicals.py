@@ -12,6 +12,13 @@ from tools.api import get_prices, prices_to_df
 from utils.progress import progress
 
 
+def safe_round_percentage(value, default=0):
+    """Safely convert a potentially NaN confidence value to a rounded percentage."""
+    if pd.isna(value):
+        return default
+    return round(value * 100)
+
+
 ##### Technical Analyst #####
 def technical_analyst_agent(state: AgentState):
     """
@@ -86,31 +93,31 @@ def technical_analyst_agent(state: AgentState):
         # Generate detailed analysis report for this ticker
         technical_analysis[ticker] = {
             "signal": combined_signal["signal"],
-            "confidence": round(combined_signal["confidence"] * 100),
+            "confidence": safe_round_percentage(combined_signal["confidence"]),
             "strategy_signals": {
                 "trend_following": {
                     "signal": trend_signals["signal"],
-                    "confidence": round(trend_signals["confidence"] * 100),
+                    "confidence": safe_round_percentage(trend_signals["confidence"]),
                     "metrics": normalize_pandas(trend_signals["metrics"]),
                 },
                 "mean_reversion": {
                     "signal": mean_reversion_signals["signal"],
-                    "confidence": round(mean_reversion_signals["confidence"] * 100),
+                    "confidence": safe_round_percentage(mean_reversion_signals["confidence"]),
                     "metrics": normalize_pandas(mean_reversion_signals["metrics"]),
                 },
                 "momentum": {
                     "signal": momentum_signals["signal"],
-                    "confidence": round(momentum_signals["confidence"] * 100),
+                    "confidence": safe_round_percentage(momentum_signals["confidence"]),
                     "metrics": normalize_pandas(momentum_signals["metrics"]),
                 },
                 "volatility": {
                     "signal": volatility_signals["signal"],
-                    "confidence": round(volatility_signals["confidence"] * 100),
+                    "confidence": safe_round_percentage(volatility_signals["confidence"]),
                     "metrics": normalize_pandas(volatility_signals["metrics"]),
                 },
                 "statistical_arbitrage": {
                     "signal": stat_arb_signals["signal"],
-                    "confidence": round(stat_arb_signals["confidence"] * 100),
+                    "confidence": safe_round_percentage(stat_arb_signals["confidence"]),
                     "metrics": normalize_pandas(stat_arb_signals["metrics"]),
                 },
             },
@@ -385,13 +392,17 @@ def weighted_signal_combination(signals, weights):
 def normalize_pandas(obj):
     """Convert pandas Series/DataFrames to primitive Python types"""
     if isinstance(obj, pd.Series):
-        return obj.tolist()
+        # Replace NaN values with None before converting to list
+        return obj.where(pd.notna(obj), None).tolist()
     elif isinstance(obj, pd.DataFrame):
-        return obj.to_dict("records")
+        # Replace NaN values with None in DataFrame
+        return obj.where(pd.notna(obj), None).to_dict("records")
     elif isinstance(obj, dict):
         return {k: normalize_pandas(v) for k, v in obj.items()}
     elif isinstance(obj, (list, tuple)):
         return [normalize_pandas(item) for item in obj]
+    elif pd.isna(obj):  # Handle individual NaN values
+        return None
     return obj
 
 

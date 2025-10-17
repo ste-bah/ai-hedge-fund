@@ -35,9 +35,19 @@ def get_prices(ticker: str, start_date: str, end_date: str) -> list[Price]:
         headers["X-API-KEY"] = api_key
 
     url = f"https://api.financialdatasets.ai/prices/?ticker={ticker}&interval=day&interval_multiplier=1&start_date={start_date}&end_date={end_date}"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+    try:
+        response = requests.get(url, headers=headers, timeout=30, verify=True)
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        # Check specifically for 400 Bad Request, which might indicate missing data for this ticker
+        if e.response.status_code == 400:
+            print(f"Warning: No price data available for ticker {ticker}. The API returned a 400 Bad Request error.")
+            return []  # Return empty list to allow processing to continue
+        # For other HTTP errors, re-raise with more context
+        raise Exception(f"HTTP error fetching prices for {ticker}: {e}")
+    except requests.exceptions.RequestException as e:
+        # Catch other potential request errors (including SSLError, Timeout, ConnectionError)
+        raise Exception(f"Error fetching prices for {ticker}: {e}")
 
     # Parse response with Pydantic model
     price_response = PriceResponse(**response.json())
@@ -76,13 +86,16 @@ def get_financial_metrics(
         # Add explicit timeout and verification
         response = requests.get(url, headers=headers, timeout=30, verify=True)
         response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+    except requests.exceptions.HTTPError as e:
+        # Check specifically for 400 Bad Request, which might indicate missing data for this ticker
+        if e.response.status_code == 400:
+            print(f"Warning: No financial metrics data available for ticker {ticker}. The API returned a 400 Bad Request error.")
+            return []  # Return empty list to allow processing to continue with other tickers
+        # For other HTTP errors, re-raise with more context
+        raise Exception(f"HTTP error fetching financial metrics for {ticker}: {e}") from e
     except requests.exceptions.RequestException as e:
-         # Catch potential request errors (including SSLError, Timeout, ConnectionError)
-        raise Exception(f"Error fetching data for {ticker}: {e}") from e
-
-    # Removed status code check here as raise_for_status handles it
-    # if response.status_code != 200:
-    #     raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+        # Catch other potential request errors (including SSLError, Timeout, ConnectionError)
+        raise Exception(f"Error fetching financial metrics for {ticker}: {e}") from e
 
     # Parse response with Pydantic model
     metrics_response = FinancialMetricsResponse(**response.json())
@@ -96,6 +109,9 @@ def get_financial_metrics(
     _cache.set_financial_metrics(ticker, [m.model_dump() for m in financial_metrics])
     return financial_metrics
 
+
+import time
+import random
 
 def search_line_items(
     ticker: str,
@@ -119,12 +135,50 @@ def search_line_items(
         "period": period,
         "limit": limit,
     }
-    try:
-        # Ensure SSL verification is enabled (default)
-        response = requests.post(url, headers=headers, json=body, timeout=30, verify=True) 
-        response.raise_for_status() # Check for HTTP errors
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Error fetching line items for {ticker}: {e}") from e
+    
+    # Implement retry logic with exponential backoff
+    max_retries = 3
+    retry_delay = 2  # Initial delay in seconds
+    
+    for retry_count in range(max_retries + 1):
+        try:
+            # Ensure SSL verification is enabled (default)
+            response = requests.post(url, headers=headers, json=body, timeout=30, verify=True) 
+            response.raise_for_status() # Check for HTTP errors
+            break  # Success, exit the retry loop
+        except requests.exceptions.HTTPError as e:
+            # Check specifically for 400 Bad Request, which might indicate missing data
+            if e.response.status_code == 400:
+                print(f"Warning: No line items data available for ticker {ticker}. The API returned a 400 Bad Request error.")
+                return []  # Return empty list to allow processing to continue
+            
+            # Handle rate limiting (429 Too Many Requests)
+            if e.response.status_code == 429:
+                if retry_count < max_retries:
+                    # Add jitter to avoid synchronized retries
+                    jitter = random.uniform(0, 0.5)
+                    sleep_time = retry_delay * (2 ** retry_count) + jitter
+                    print(f"Rate limited when fetching line items for {ticker}. Retrying in {sleep_time:.2f} seconds (attempt {retry_count + 1}/{max_retries})...")
+                    time.sleep(sleep_time)
+                    continue  # Retry after waiting
+                else:
+                    print(f"Warning: Rate limit exceeded for {ticker} after {max_retries} retries. Skipping line items.")
+                    return []  # Return empty list after exhausting retries
+            
+            # For other HTTP errors, re-raise with more context
+            raise Exception(f"HTTP error fetching line items for {ticker}: {e}") from e
+        except requests.exceptions.RequestException as e:
+            # For network errors, retry with backoff if we haven't exhausted retries
+            if retry_count < max_retries:
+                # Add jitter to avoid synchronized retries
+                jitter = random.uniform(0, 0.5)
+                sleep_time = retry_delay * (2 ** retry_count) + jitter
+                print(f"Network error when fetching line items for {ticker}. Retrying in {sleep_time:.2f} seconds (attempt {retry_count + 1}/{max_retries})...")
+                time.sleep(sleep_time)
+                continue  # Retry after waiting
+            
+            # Catch other potential request errors (including SSLError, Timeout, ConnectionError)
+            raise Exception(f"Error fetching line items for {ticker} after {max_retries} retries: {e}") from e
         
     data = response.json()
     response_model = LineItemResponse(**data)
@@ -167,9 +221,19 @@ def get_insider_trades(
             url += f"&filing_date_gte={start_date}"
         url += f"&limit={limit}"
         
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+        try:
+            response = requests.get(url, headers=headers, timeout=30, verify=True)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            # Check specifically for 400 Bad Request, which might indicate missing data for this ticker
+            if e.response.status_code == 400:
+                print(f"Warning: No insider trades data available for ticker {ticker}. The API returned a 400 Bad Request error.")
+                return []  # Return empty list to allow processing to continue
+            # For other HTTP errors, re-raise with more context
+            raise Exception(f"HTTP error fetching insider trades for {ticker}: {e}")
+        except requests.exceptions.RequestException as e:
+            # Catch other potential request errors (including SSLError, Timeout, ConnectionError)
+            raise Exception(f"Error fetching insider trades for {ticker}: {e}")
         
         data = response.json()
         response_model = InsiderTradeResponse(**data)
@@ -230,9 +294,19 @@ def get_company_news(
             url += f"&start_date={start_date}"
         url += f"&limit={limit}"
         
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise Exception(f"Error fetching data: {ticker} - {response.status_code} - {response.text}")
+        try:
+            response = requests.get(url, headers=headers, timeout=30, verify=True)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            # Check specifically for 400 Bad Request, which might indicate missing data for this ticker
+            if e.response.status_code == 400:
+                print(f"Warning: No news data available for ticker {ticker}. The API returned a 400 Bad Request error.")
+                return []  # Return empty list to allow processing to continue
+            # For other HTTP errors, re-raise with more context
+            raise Exception(f"HTTP error fetching news for {ticker}: {e}")
+        except requests.exceptions.RequestException as e:
+            # Catch other potential request errors (including SSLError, Timeout, ConnectionError)
+            raise Exception(f"Error fetching news for {ticker}: {e}")
         
         data = response.json()
         response_model = CompanyNewsResponse(**data)
@@ -269,6 +343,12 @@ def get_market_cap(
 ) -> float | None:
     """Fetch market cap from the API."""
     financial_metrics = get_financial_metrics(ticker, end_date)
+    
+    # Check if any financial metrics were returned
+    if not financial_metrics:
+        print(f"Warning: No financial metrics found for {ticker}, cannot determine market cap.")
+        return None
+        
     market_cap = financial_metrics[0].market_cap
     if not market_cap:
         return None
@@ -278,6 +358,11 @@ def get_market_cap(
 
 def prices_to_df(prices: list[Price]) -> pd.DataFrame:
     """Convert prices to a DataFrame."""
+    # Check if prices list is empty
+    if not prices:
+        # Return an empty DataFrame with expected columns
+        return pd.DataFrame(columns=["time", "open", "close", "high", "low", "volume", "Date"]).set_index("Date")
+        
     df = pd.DataFrame([p.model_dump() for p in prices])
     df["Date"] = pd.to_datetime(df["time"])
     df.set_index("Date", inplace=True)
@@ -290,5 +375,10 @@ def prices_to_df(prices: list[Price]) -> pd.DataFrame:
 
 # Update the get_price_data function to use the new functions
 def get_price_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
-    prices = get_prices(ticker, start_date, end_date)
-    return prices_to_df(prices)
+    try:
+        prices = get_prices(ticker, start_date, end_date)
+        return prices_to_df(prices)
+    except Exception as e:
+        print(f"Error getting price data for {ticker}: {e}")
+        # Return an empty DataFrame with expected columns
+        return pd.DataFrame(columns=["time", "open", "close", "high", "low", "volume", "Date"]).set_index("Date")
